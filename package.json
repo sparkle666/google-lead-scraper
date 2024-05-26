@@ -1,0 +1,19 @@
+{
+  "name": "respectmart-auto",
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "fast-csv": "^5.0.1",
+    "htmlparser2": "^9.1.0",
+    "ms": "^2.1.3",
+    "puppeteer": "^22.9.0"
+  }
+}
