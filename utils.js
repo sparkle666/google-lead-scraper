@@ -7,7 +7,14 @@ export const extractContactInfo = (texts) => {
   const emailRegex = /[\w.-]+@[\w.-]+\.[\w.-]+/g;
   
   // Regular expression for matching a phone number in the format +234 followed by 10 digits or Nigerian phone numbers
-  const phoneRegex = /\+?234\d{10}\b|\b0[789]0?\d{8}\b/g;
+  // const phoneRegex = /\+?234\d{10}\b|\b0[789]0?\d{8}\b/g; // Nigeria
+
+  // const ukPhoneRegex = /^(?:\+44|0)?(?:\s*\d\s*){10,11}$/;
+  // const ukPhoneRegex = /(?:\+44|0)\s*\d{3,4}\s*\d{3,4}\s*\d{3,4}/g;
+
+  // const ukPhoneRegex = /(?:\+44\s?\(0\)\s?|\+44\s?|0)\s?\(?\d{2,4}\)?\s?\d{3,4}\s?\d{3,4}/g;
+
+  const usaRegex = /(\+1\s?)?(\(\d{3}\)\s?|\d{3}[-.\s]?)\d{3}[-.\s]?\d{4}/g;
 
   // Initialize arrays to store extracted emails and phones
   let allEmails = [];
@@ -17,7 +24,7 @@ export const extractContactInfo = (texts) => {
   texts.forEach((text) => {
     // Find all email and phone number matches in the current text
     const emails = text.match(emailRegex) || [];
-    const phones = text.match(phoneRegex) || [];
+    const phones = text.match(usaRegex) || [];
 
     // Add the found emails and phones to the aggregated arrays
     allEmails = [...allEmails, ...emails];
@@ -28,19 +35,23 @@ export const extractContactInfo = (texts) => {
   allEmails = [...new Set(allEmails)];
   allPhones = [...new Set(allPhones)];
 
+  // console.log(allEmails, allPhones)
+
   // Return the aggregated results
   return {
     emails: allEmails.length > 0 ? allEmails : ["null"],
     phones: allPhones.length > 0 ? allPhones : ["null"]
   };
 }
+// const phoneNumbers = ['Tel: 123-456-7890 and  then also 123 456 7890 Phone: +1 123 456 7890 nas +1 (123) 456-7890 jesu@gmail.co.uk']
 
+// extractContactInfo(phoneNumbers)
 
 export const writeCSV = (data, append = false) => {
     // Check if we need to append a newline before writing new data
-  const fileExists = fs.existsSync('output.csv');
+  const fileExists = fs.existsSync('usa_output.csv');
 
-  const ws = fs.createWriteStream('output.csv', { flags: append ? 'a' : 'w' });
+  const ws = fs.createWriteStream('usa_output.csv', { flags: append ? 'a' : 'w' });
  // Write a newline if appending to an existing file
   if (append && fileExists) {
     ws.write('\n');

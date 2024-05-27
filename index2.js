@@ -1,73 +1,169 @@
 import puppeteer from 'puppeteer';
 import { extractContactInfo, writeCSV, readNamesFromFile } from './utils.js';
+import fs from 'fs';
+import { format } from 'fast-csv';
 
 console.log("MAKE SURE TO COPY CONTENTS OF OUTPUT.CSV SINCE IT OVERWRITES ON EVERY RUN...");
 
 const filePath = 'company_names.txt'; // Replace with the path to your text file
 
 const DATA = [];
+const BATCH_SIZE = 5;
+
+// Wrap the writeCSV function in a Promise to make it async
+const writeCSVAsync = (data, append = false) => {
+  return new Promise((resolve, reject) => {
+    const fileExists = fs.existsSync('usa_output.csv');
+
+    const ws = fs.createWriteStream('usa_output.csv', { flags: append ? 'a' : 'w' });
+
+    if (append && fileExists) {
+      ws.write('\n');
+    }
+
+    const csvStream = format({ headers: !append })
+      .on('error', (err) => reject(err))
+      .on('finish', () => resolve());
+
+    csvStream.pipe(ws);
+
+    data.forEach((row) => {
+      csvStream.write({
+        name: row.name,
+        emails: row.emails.join(', '),
+        phones: row.phones.join(', '),
+        urls: row.urls.join(', ')
+      });
+    });
+    csvStream.end();
+  });
+};
 
 const runBot = async () => {
   // Load list of company names to scrape
   const names = readNamesFromFile(filePath);
   
   // Launch the browser
-  const browser = await puppeteer.launch({ headless: false });
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-accelerated-2d-canvas',
+      '--disable-gpu',
+      '--no-first-run',
+      '--no-zygote',
+      '--single-process',
+      '--disable-background-networking',
+      '--disable-background-timer-throttling',
+      '--disable-renderer-backgrounding',
+      '--disable-backgrounding-occluded-windows',
+      '--disable-infobars',
+      '--disable-breakpad',
+      '--disable-client-side-phishing-detection',
+      '--disable-component-update',
+      '--disable-default-apps',
+      '--disable-extensions',
+      '--disable-hang-monitor',
+      '--disable-prompt-on-repost',
+      '--disable-sync',
+      '--metrics-recording-only',
+      '--mute-audio',
+      '--no-crash-upload',
+      '--safebrowsing-disable-auto-update',
+      '--disable-logging',
+      '--ignore-certificate-errors',
+      '--ignore-certificate-errors-spki-list',
+      '--disable-software-rasterizer',
+    ],
+  });
 
-  // Function to process each name
-  const processName = async (name) => {
-    const page = await browser.newPage();
-    await page.setViewport({ width: 1080, height: 1024 });
+  try {
+    // Function to process each name
+    const processName = async (name) => {
+      try {
+        const page = await browser.newPage();
+        await page.setViewport({ width: 1080, height: 1024 });
 
-    console.log(`Searching for: ${name}`);
-    await page.goto('https://www.google.com/');
+        // Block images and other unnecessary requests
+        await page.setRequestInterception(true);
+        page.on('request', (request) => {
+          if (['image', 'stylesheet', 'font'].includes(request.resourceType())) {
+            request.abort();
+          } else {
+            request.continue();
+          }
+        });
 
-    // Type the name and query for email and contact
-    await page.type("#APjFqb", `${name} email and contact` + String.fromCharCode(13));
+        console.log(`Searching for: ${name}`);
+        await page.goto('https://www.google.com/');
 
-    await page.waitForNavigation();
+        // Type the name and query for email and contact
+        await page.type("#APjFqb", `${name} usa email and contact` + String.fromCharCode(13));
 
-    const results = await page.evaluate(() => {
-      const items = Array.from(document.getElementsByClassName("MjjYud"));
-      return items.map(item => {
-        const anchorTag = item.querySelector('a[jsname="UWckNb"]');
-        const href = anchorTag ? anchorTag.href : null;
+        await page.waitForSelector('.MjjYud', { timeout: 30000 }); // Adjust timeout if necessary
 
-        const divTag = item.querySelector('div.kb0PBd.cvP2Ce.A9Y9g[data-snf="nke7rc"] div.VwiC3b.yXK7lf.lVm3ye.r025kc.hJNv6b.Hdw6tb');
-        const divText = divTag ? divTag.innerText : null;
+        const results = await page.evaluate(() => {
+          const items = Array.from(document.getElementsByClassName("MjjYud"));
+          return items.map(item => {
+            const anchorTag = item.querySelector('a[jsname="UWckNb"]');
+            const href = anchorTag ? anchorTag.href : null;
 
-        return { href, divText };
-      });
-    });
+            const divTag = item.querySelector('div.kb0PBd.cvP2Ce.A9Y9g[data-snf="nke7rc"] div.VwiC3b.yXK7lf.lVm3ye.r025kc.hJNv6b.Hdw6tb');
+            const divText = divTag ? divTag.innerText : null;
 
-    await page.close();
+            return { href, divText };
+          });
+        });
 
-    // Get all hrefs and remove null values
-    const filteredLinks = results.map(item => item.href).filter(Boolean).slice(0, 3);
-    const filteredText = results.map(item => item.divText).filter(Boolean);
+        await page.close();
 
-    // Extract contact from filteredText
-    const contactObjects = extractContactInfo(filteredText);
-    contactObjects["urls"] = filteredLinks;
-    contactObjects.name = name;
+        // Get all hrefs and remove null values
+        const filteredLinks = results.map(item => item.href).filter(Boolean).slice(0, 2);
+        const filteredText = results.map(item => item.divText).filter(Boolean);
 
-    console.log(contactObjects);
+        // Extract contact from filteredText
+        const contactObjects = extractContactInfo(filteredText);
+        contactObjects["urls"] = filteredLinks;
+        contactObjects.name = name;
 
-    // Push the extracted contact to the DATA array
-    DATA.push(contactObjects);
-  };
+        console.log(contactObjects);
 
-  // Process names in parallel with a limit of concurrent pages
-  const BATCH_SIZE = 5;
-  for (let i = 0; i < names.length; i += BATCH_SIZE) {
-    const batch = names.slice(i, i + BATCH_SIZE);
-    await Promise.all(batch.map(name => processName(name)));
+        // Push the extracted contact to the DATA array
+        DATA.push(contactObjects);
+      } catch (error) {
+        console.error(`Error processing ${name}: ${error.message}`);
+      }
+    };
+
+
+    for (let i = 0; i < names.length; i += BATCH_SIZE) {
+
+      const batch = names.slice(i, i + BATCH_SIZE);
+      await Promise.all(batch.map(name => processName(name)));
+
+      console.log("Current name index: ", i);
+
+      if ((i + BATCH_SIZE) % 10 === 0 && i !== 0) {
+        // Write to CSV after every 10 names
+        await writeCSVAsync(DATA, true);
+        console.log(`Written ${i + BATCH_SIZE} scraped data to csv...`);
+        // Clear data
+        DATA.length = 0;
+      }
+    }
+    // Write the remaining data to csv not included in the last batch
+    await writeCSVAsync(DATA, true);
+
+    await browser.close();
+  } catch (e) {
+    console.log("Error occurred... Saving already scraped data");
+    if (DATA.length > 0) {
+      // Write the contents to CSV once
+      await writeCSVAsync(DATA, true);
+    }
   }
-
-  // Write the contents to CSV once
-  writeCSV(DATA, true);
-
-  await browser.close();
 };
 
 runBot();
