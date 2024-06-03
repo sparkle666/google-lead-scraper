@@ -1,5 +1,5 @@
 import puppeteer from 'puppeteer';
-import { extractContactInfo, writeCSV, readNamesFromFile } from './utils.js';
+import { extractContactInfo, writeCSVAsync, readNamesFromFile } from './utils.js';
 import fs from 'fs';
 import { format } from 'fast-csv';
 
@@ -10,34 +10,6 @@ const filePath = 'company_names.txt'; // Replace with the path to your text file
 const DATA = [];
 const BATCH_SIZE = 5;
 
-// Wrap the writeCSV function in a Promise to make it async
-const writeCSVAsync = (data, append = false) => {
-  return new Promise((resolve, reject) => {
-    const fileExists = fs.existsSync('usa_output.csv');
-
-    const ws = fs.createWriteStream('usa_output.csv', { flags: append ? 'a' : 'w' });
-
-    if (append && fileExists) {
-      ws.write('\n');
-    }
-
-    const csvStream = format({ headers: !append })
-      .on('error', (err) => reject(err))
-      .on('finish', () => resolve());
-
-    csvStream.pipe(ws);
-
-    data.forEach((row) => {
-      csvStream.write({
-        name: row.name,
-        emails: row.emails.join(', '),
-        phones: row.phones.join(', '),
-        urls: row.urls.join(', ')
-      });
-    });
-    csvStream.end();
-  });
-};
 
 const runBot = async () => {
   // Load list of company names to scrape
@@ -100,7 +72,7 @@ const runBot = async () => {
         await page.goto('https://www.google.com/');
 
         // Type the name and query for email and contact
-        await page.type("#APjFqb", `${name} usa email and contact` + String.fromCharCode(13));
+        await page.type("#APjFqb", `${name} ivory coast website, email, and contact details` + String.fromCharCode(13));
 
         await page.waitForSelector('.MjjYud', { timeout: 30000 }); // Adjust timeout if necessary
 
@@ -154,6 +126,7 @@ const runBot = async () => {
       }
     }
     // Write the remaining data to csv not included in the last batch
+    console.log("Written the rest of DATA to csv...")
     await writeCSVAsync(DATA, true);
 
     await browser.close();

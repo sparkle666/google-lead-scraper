@@ -1,7 +1,40 @@
 import fs from 'fs';
 import { format } from 'fast-csv';
 
+
+// Wrap the writeCSV function in a Promise to make it async
+export const writeCSVAsync = (data, append = false) => {
+  return new Promise((resolve, reject) => {
+    const fileExists = fs.existsSync('ivory_output.csv');
+
+    const ws = fs.createWriteStream('ivory_output.csv', { flags: append ? 'a' : 'w' });
+
+    if (append && fileExists) {
+      ws.write('\n');
+    }
+
+    const csvStream = format({ headers: !append })
+      .on('error', (err) => reject(err))
+      .on('finish', () => resolve());
+
+    csvStream.pipe(ws);
+
+    data.forEach((row) => {
+      csvStream.write({
+        name: row.name,
+        emails: row.emails.join(', '),
+        phones: row.phones.join(', '),
+        urls: row.urls.join(', ')
+      });
+    });
+    csvStream.end();
+  });
+};
+
+
 export const extractContactInfo = (texts) => {
+  // Extract email and phone number from an array of text
+
   console.log("Extracting Contact info...")
   // Regular expression for matching an email
   const emailRegex = /[\w.-]+@[\w.-]+\.[\w.-]+/g;
@@ -14,9 +47,23 @@ export const extractContactInfo = (texts) => {
 
   // const ukPhoneRegex = /(?:\+44\s?\(0\)\s?|\+44\s?|0)\s?\(?\d{2,4}\)?\s?\d{3,4}\s?\d{3,4}/g;
 
-  const usaRegex = /(\+1\s?)?(\(\d{3}\)\s?|\d{3}[-.\s]?)\d{3}[-.\s]?\d{4}/g;
+  // const usaRegex = /(\+1\s?)?(\(\d{3}\)\s?|\d{3}[-.\s]?)\d{3}[-.\s]?\d{4}/g;
 
-  // Initialize arrays to store extracted emails and phones
+  // const franceRegex = /(?:\+33\s?[1-9](?:\s?\d{2}){4}|0[1-9](?:\s?\d{2}){4})\b/g;
+  // const germanyRegex = /(?:\+49\s?(?:[1-9]\d{1,4}\s?\d{1,9}|1[5-7]\d\s?\d{7,8})|0(?:[1-9]\d{1,4}\s?\d{1,9}|1[5-7]\d\s?\d{7,8}))\b/g;
+  // const aussieRegex = /\b(?:\+61\s?4\d{2}\s?\d{3}\s?\d{3}|\+61\s?[2-7]\s?\d{4}\s?\d{4}|04\d{2}\s?\d{3}\s?\d{3}|\(0[2-7]\)\s?\d{4}\s?\d{4}|0[2-7]\s?\d{4}\s?\d{4})\b/g;
+
+  // const aussieRegex = /(?:\+61\s?\(0\)\s?[2-7]\s?\d{4}\s?\d{4}|\+61\s?4\d{2}\s?\d{3}\s?\d{3}|\+61\s?[2-7]\s?\d{4}\s?\d{4}|04\d{2}\s?\d{3}\s?\d{3}|\(0[2-7]\)\s?\d{4}\s?\d{4}|0[2-7]\s?\d{4}\s?\d{4})\b/g;
+  // const belgiumRegex = /(?:\+32\s?4\d{2}\s?\d{2}\s?\d{2}\s?\d{2}|\+32\s?[1-9]\s?\d{3}\s?\d{2}\s?\d{2}|\+32\s?[1-9]{2}\s?\d{2}\s?\d{2}\s?\d{2}|04\d{2}\s?\d{2}\s?\d{2}\s?\d{2}|0[1-9]\s?\d{3}\s?\d{2}\s?\d{2}|0[1-9]{2}\s?\d{2}\s?\d{2}\s?\d{2})\b/g;
+  // const netherRegex = /(?:\+31\s?6\s?\d{3}\s?\d{5}|\+31\s?[1-9]\s?\d{3}\s?\d{4}|\+31\s?[1-9]{2}\s?\d{3}\s?\d{4}|06\s?\d{3}\s?\d{5}|0[1-9]\s?\d{3}\s?\d{4}|0[1-9]{2}\s?\d{3}\s?\d{4})\b/g;
+
+  // const ivoryRegex = "/^(\+225)?[-.\s]?\d{3}[-.\s]?\d{2}[-.\s]?\d{2}$/"
+
+  const ivoryRegex = /(?:\+225\s?0?\d\s?\d{2}\s?\d{2}\s?\d{2}\s?\d{2}|\+225\s?\d{2}\s?\d{2}\s?\d{2}\s?\d{2}|0?\d\s?\d{2}\s?\d{2}\s?\d{2}\s?\d{2})\b/g;
+
+
+
+  // // Initialize arrays to store extracted emails and phones
   let allEmails = [];
   let allPhones = [];
 
@@ -24,7 +71,7 @@ export const extractContactInfo = (texts) => {
   texts.forEach((text) => {
     // Find all email and phone number matches in the current text
     const emails = text.match(emailRegex) || [];
-    const phones = text.match(usaRegex) || [];
+    const phones = text.match(ivoryRegex) || [];
 
     // Add the found emails and phones to the aggregated arrays
     allEmails = [...allEmails, ...emails];
@@ -32,8 +79,8 @@ export const extractContactInfo = (texts) => {
   });
 
   // Remove duplicates by converting to a Set and back to an array
-  allEmails = [...new Set(allEmails)];
-  allPhones = [...new Set(allPhones)];
+  allEmails = [...new Set(allEmails)]
+  allPhones = [...new Set(allPhones)]
 
   // console.log(allEmails, allPhones)
 
@@ -43,15 +90,15 @@ export const extractContactInfo = (texts) => {
     phones: allPhones.length > 0 ? allPhones : ["null"]
   };
 }
-// const phoneNumbers = ['Tel: 123-456-7890 and  then also 123 456 7890 Phone: +1 123 456 7890 nas +1 (123) 456-7890 jesu@gmail.co.uk']
+// const phoneNumbers = ['+225 01 23 45 67 89, +225 2127 1720 or  at my mobile 01 23 45 67 89. another@gmaifdfl.com another@gmail.com ddkfd jesu@gmail.co.uk']
 
 // extractContactInfo(phoneNumbers)
 
 export const writeCSV = (data, append = false) => {
     // Check if we need to append a newline before writing new data
-  const fileExists = fs.existsSync('usa_output.csv');
+  const fileExists = fs.existsSync('germany_output.csv');
 
-  const ws = fs.createWriteStream('usa_output.csv', { flags: append ? 'a' : 'w' });
+  const ws = fs.createWriteStream('germany_output.csv', { flags: append ? 'a' : 'w' });
  // Write a newline if appending to an existing file
   if (append && fileExists) {
     ws.write('\n');
@@ -72,6 +119,10 @@ export const writeCSV = (data, append = false) => {
     });
   });
   csvStream.end();
+  // Wait for 4 seconds
+  console.log("Waiting for 4 seconds...")
+  setTimeout(()=> console.log("Waited for 4 seconds..."), 4000)
+
 };
 
 
