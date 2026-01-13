@@ -8,7 +8,7 @@ console.log("MAKE SURE TO COPY CONTENTS OF OUTPUT.CSV SINCE IT OVERWRITES ON EVE
 const filePath = 'company_names.txt'; // Replace with the path to your text file
 
 const DATA = [];
-const BATCH_SIZE = 5;
+const BATCH_SIZE = 3;
 
 
 const runBot = async () => {
@@ -17,7 +17,7 @@ const runBot = async () => {
   
   // Launch the browser
   const browser = await puppeteer.launch({
-    headless: true,
+    headless: false,
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
