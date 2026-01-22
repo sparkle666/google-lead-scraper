@@ -1,0 +1,46 @@
+[
+  {
+    "name": "PHPSESSID",
+    "value": "d2d4055a14c817830a3e2934c9d42428",
+    "domain": ".freighteva.com",
+    "path": "/",
+    "expires": -1,
+    "size": 41,
+    "httpOnly": false,
+    "secure": true,
+    "session": true,
+    "sameSite": "None",
+    "priority": "Medium",
+    "sameParty": false,
+    "sourceScheme": "Secure"
+  },
+  {
+    "name": "lf_last_version_check",
+    "value": "1",
+    "domain": ".freighteva.com",
+    "path": "/",
+    "expires": 1769211990.835699,
+    "size": 22,
+    "httpOnly": false,
+    "secure": true,
+    "session": false,
+    "sameSite": "None",
+    "priority": "Medium",
+    "sameParty": false,
+    "sourceScheme": "Secure"
+  },
+  {
+    "name": "adMenu_1",
+    "value": "show",
+    "domain": "freighteva.com",
+    "path": "/",
+    "expires": 1771098278,
+    "size": 12,
+    "httpOnly": false,
+    "secure": false,
+    "session": false,
+    "priority": "Medium",
+    "sameParty": false,
+    "sourceScheme": "Secure"
+  }
+]
